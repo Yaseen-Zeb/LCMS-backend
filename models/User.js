@@ -14,7 +14,6 @@ const User = sequelize.define(
     address: { type: DataTypes.TEXT, allowNull: true },
     specialization: {
       type: DataTypes.JSON,
-      allowNull: false,
     },
     experience: { type: DataTypes.INTEGER },
   },
