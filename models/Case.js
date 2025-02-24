@@ -24,8 +24,6 @@ const Case = sequelize.define("cases", {
   },
   budget_amount: { type: DataTypes.FLOAT, allowNull: true },
   location: { type: DataTypes.STRING, allowNull: false },
-
-  // 🔹 Foreign Keys
   client_id: { type: DataTypes.INTEGER, allowNull: false },
   assignedLawyer_id: { type: DataTypes.INTEGER, allowNull: true },
 });
