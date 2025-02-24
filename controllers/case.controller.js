@@ -52,7 +52,7 @@ const getMyCases = async (req, res) => {
   try {
     const cases = await Case.findAll({
       where: { client_id: req.user.id },
-      order: ["createdAt", "DESC"],
+      order: [["createdAt", "DESC"]],
     });
 
     return responseHelper.success(
