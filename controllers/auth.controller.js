@@ -1,4 +1,8 @@
-const { getHashValue, isHashMatch, signAccessToken } = require("../helpers/hash.helper");
+const {
+  getHashValue,
+  isHashMatch,
+  signAccessToken,
+} = require("../helpers/hash.helper");
 const responseHelper = require("../helpers/response.helper");
 const { User } = require("../models");
 
@@ -12,7 +16,7 @@ const login = async (req, res) => {
       return responseHelper.fail(res, "Invalid email or password", 401);
     }
 
-    const isPasswordValid = await isHashMatch(password,user.password);
+    const isPasswordValid = await isHashMatch(password, user.password);
 
     if (!isPasswordValid) {
       return responseHelper.fail(res, "Invalid email or password", 401);
@@ -78,7 +82,39 @@ const signup = async (req, res) => {
   }
 };
 
+const changePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const userId = req.user.id;
+
+    const user = await User.findByPk(userId);
+
+    if (!user) {
+      return responseHelper.fail(res, "User not found", 404);
+    }
+
+    const isPasswordValid = await isHashMatch(oldPassword, user.password);
+    if (!isPasswordValid) {
+      return responseHelper.fail(res, "Old password is incorrect", 400);
+    }
+
+    const hashedNewPassword = await getHashValue(newPassword);
+
+    await user.update({ password: hashedNewPassword });
+
+    return responseHelper.success(
+      res,
+      {},
+      "Password changed successfully",
+      200
+    );
+  } catch (error) {
+    return responseHelper.fail(res, error.message, 500);
+  }
+};
+
 module.exports = {
   login,
   signup,
+  changePassword,
 };

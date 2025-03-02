@@ -16,4 +16,8 @@ router.get("/list", caseController.getCases);
 
 router.get("/my-cases", authenticate, caseController.getMyCases);
 
+router.get("/detail/:id", caseController.getCaseById);
+
+router.get("/cases/:id", caseController.getOpenClosedCaseById);
+
 module.exports = router;

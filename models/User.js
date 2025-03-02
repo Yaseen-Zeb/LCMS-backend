@@ -7,9 +7,12 @@ const User = sequelize.define(
   {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     name: { type: DataTypes.STRING, allowNull: false },
-    email: { type: DataTypes.STRING, unique: true, allowNull: false },
+    email: { type: DataTypes.STRING, allowNull: false },
     password: { type: DataTypes.STRING, allowNull: false },
-    role: { type: DataTypes.ENUM(...Object.values(ROLES)), allowNull: false },
+    role: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     phone_number: { type: DataTypes.STRING, allowNull: false },
     address: { type: DataTypes.TEXT, allowNull: true },
     specialization: {
@@ -25,6 +28,11 @@ User.associate = (models) => {
     foreignKey: "client_id",
     onDelete: "CASCADE",
     as: "cases",
+  });
+  User.hasMany(models.Bidding, {
+    foreignKey: "lawyer_id",
+    onDelete: "CASCADE",
+    as: "biddings",
   });
 };
 

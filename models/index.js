@@ -1,7 +1,8 @@
 const User = require("./User");
 const Case = require("./Case");
+const Bidding = require("./Bidding");
 
-const models = { User, Case };
+const models = { User, Case, Bidding };
 
 (() => {
   try {

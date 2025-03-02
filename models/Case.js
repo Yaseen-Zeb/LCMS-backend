@@ -15,12 +15,16 @@ const Case = sequelize.define("cases", {
     allowNull: false,
   },
   urgency: {
-    type: DataTypes.ENUM(...Object.values(URGENCY_LEVELS)),
-    defaultValue: "Standard",
+    type: DataTypes.STRING,
+    defaultValue: "Standard"
   },
   budget_type: {
-    type: DataTypes.ENUM(...Object.values(BUDGET_TYPES)),
-    allowNull: true,
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  status: {
+    type: DataTypes.STRING,
+    defaultValue: "Open"
   },
   budget_amount: { type: DataTypes.FLOAT, allowNull: true },
   location: { type: DataTypes.STRING, allowNull: false },
@@ -33,6 +37,10 @@ Case.associate = (models) => {
   Case.belongsTo(models.User, {
     foreignKey: "assignedLawyer_id",
     as: "assignedLawyer",
+  });
+  Case.hasMany(models.Bidding, {
+    foreignKey: "case_id",
+    as: "biddings",
   });
 };
 
