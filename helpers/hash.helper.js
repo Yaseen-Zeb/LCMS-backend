@@ -20,6 +20,7 @@ module.exports.signAccessToken = async (user) => {
     email: user.email,
     role: user.role,
     name: user.name,
+    profile_picture: user.profile_picture,
   };
   const token = jwt.sign(payload, process.env.JWT_SECRET);
   return token;

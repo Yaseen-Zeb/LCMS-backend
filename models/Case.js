@@ -16,18 +16,19 @@ const Case = sequelize.define("cases", {
   },
   urgency: {
     type: DataTypes.STRING,
-    defaultValue: "Standard"
+    defaultValue: "Standard",
   },
   budget_type: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: true,
   },
   status: {
     type: DataTypes.STRING,
-    defaultValue: "Open"
+    defaultValue: "Open",
   },
   budget_amount: { type: DataTypes.FLOAT, allowNull: true },
   location: { type: DataTypes.STRING, allowNull: false },
+  total_bids: { type: DataTypes.INTEGER, allowNull: true },
   client_id: { type: DataTypes.INTEGER, allowNull: false },
   assignedLawyer_id: { type: DataTypes.INTEGER, allowNull: true },
 });

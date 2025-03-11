@@ -15,7 +15,7 @@ const path = require('path');
 
 app.use("/api", Router);
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, '')));
 
 const PORT = process.env.PORT || 5000;
 

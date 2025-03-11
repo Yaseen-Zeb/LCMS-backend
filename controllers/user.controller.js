@@ -1,271 +1,181 @@
-// const { User, OtherDetail, Team, Payment } = require("../models");
-// const responseHelper = require("../helpers/response.helper");
-// const {
-//   RESPONSE_MESSAGES
-// } = require("../config/constant");
+const { Op } = require("sequelize");
+const { ROLES } = require("../config/constant");
+const responseHelper = require("../helpers/response.helper");
+const { User, Bidding, Case } = require("../models");
 
-// const contactInfo = process.env.CONTACT_INFO;
+const getLawyers = async (req, res) => {
+  try {
+    const lawyers = await User.findAll({
+      where: { role: ROLES.LAWYER },
+      order: [["createdAt", "DESC"]],
+    });
 
-// // Create Company
-// const createCompany = async (req, res) => {
+    return responseHelper.success(
+      res,
+      lawyers,
+      "Lawyer fetched successfully",
+      200
+    );
+  } catch (error) {
+    console.error("Error fetching lawyers:", error);
+    return responseHelper.fail(res, error.message, 500);
+  }
+};
+
+const lawyerProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const lawyerProfile = await Bidding.findAll({
+      include: [
+        {
+          model: User,
+          foreignKey: "lawyer_id",
+          as: "lawyer",
+        },
+        {
+          model: Case,
+          foreignKey: "case_id",
+          as: "case",
+        },
+      ],
+      where: { lawyer_id: id },
+    });
+
+    if (!lawyerProfile) {
+      return responseHelper.fail(res, "Lawyer not found", 404);
+    }
+
+    return responseHelper.success(
+      res,
+      lawyerProfile,
+      "Lawyer fetched successfully",
+      200
+    );
+  } catch (error) {
+    console.error("Error fetching client:", error);
+    return responseHelper.fail(res, error.message, 500);
+  }
+};
+
+const updateLawyerProfile = async (req, res) => {
+  try {
+    const { id } = req.user;
+
+    const lawyerProfile = await User.update({ ...req.body }, { where: { id } });
+
+    return responseHelper.success(
+      res,
+      lawyerProfile,
+      "Lawyer profile updated successfully",
+      200
+    );
+  } catch (error) {
+    console.error("Error fetching client:", error);
+    return responseHelper.fail(res, error.message, 500);
+  }
+};
+
+// Client functions
+
+// const getClients = async (req, res) => {
 //   try {
-//     const newCompany = await Company.create(req.body);
+//     const clients = await User.findAll({
+//       where: { role: ROLES.LAWYER },
+//       order: [["createdAt", "DESC"]],
+//     });
+
 //     return responseHelper.success(
 //       res,
-//       newCompany,
-//       RESPONSE_MESSAGES.CREATED_SUCCESSFULLY,
-//       201
+//       clients,
+//       "Lawyer fetched successfully",
+//       200
 //     );
-//   } catch (err) {
-//     return responseHelper.fail(res, err.message, 500);
+//   } catch (error) {
+//     console.error("Error fetching clients:", error);
+//     return responseHelper.fail(res, error.message, 500);
 //   }
 // };
 
-// // Update User
-// // const updateUser = async (req, res) => {
-// //   try {
-// //     const { id } = req.params;
-// //     const user = await User.findByPk(id);
-// //     const { user_type, name, email } = req.body;
+const clientProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
 
-// //     if (!user) {
-// //       return responseHelper.fail(res, RESPONSE_MESSAGES.USER_NOT_FOUND, 404);
-// //     }
+    const client = await User.findOne({ where: { id, role: ROLES.CLIENT } });
 
-// //     if (user_type === USER_TYPES.RUNNER) {
-// //       const isExisting = await Team.findOne({
-// //         include: [
-// //           {
-// //             model: User,
-// //             as: "runners",
-// //             where: {
-// //               [Op.or]: [
-// //                 { name: req.body.name, id: { [Op.ne]: id } },
-// //                 {
-// //                   [Op.and]: [
-// //                     { email: req.body?.email },
-// //                     { email: { [Op.ne]: null } },
-// //                     { email: { [Op.ne]: "" } },
-// //                     { id: { [Op.ne]: id } },
-// //                   ],
-// //                 },
-// //               ],
-// //             },
-// //           },
-// //         ],
-// //         where: { company_id: req.user.id },
-// //       });
+    if (!client) {
+      return responseHelper.fail(res, "Client not found", 404);
+    }
 
-// //       if (isExisting) {
-// //         const isNameConflict = isExisting.runners.some(
-// //           (runner) => runner.name.toLowerCase() === name.toLowerCase()
-// //         );
-// //         const conflictMessage = isNameConflict
-// //           ? RESPONSE_MESSAGES.NAME_ALREADY_EXIST
-// //           : RESPONSE_MESSAGES.EMAIL_ALREADY_EXIST;
+    const Cases = await Case.findAll({
+      where: { client_id: id },
+    });
 
-// //         return responseHelper.fail(res, conflictMessage, 409);
-// //       }
-// //     }
+    const caseIds = Cases.map((caseItem) => caseItem.id);
 
-// //     if (user_type === USER_TYPES.VISITOR) {
-// //       const isExisting = await User.findOne({
-// //         include: [
-// //           {
-// //             model: User,
-// //             as: "company",
-// //             where: { id: req.user.id },
-// //           },
-// //         ],
-// //         where: {
-// //           [Op.or]: [
-// //             { name, id: { [Op.ne]: id } },
-// //             {
-// //               [Op.and]: [
-// //                 { email },
-// //                 { email: { [Op.ne]: null } },
-// //                 { email: { [Op.ne]: "" } },
-// //                 { id: { [Op.ne]: id } },
-// //               ],
-// //             },
-// //           ],
-// //         },
-// //       });
+    // Fetch bids related to those cases
+    const Bids = await Bidding.findAll({
+      include: [
+        {
+          model: Case,
+          foreignKey: "case_id",
+          as: "case",
+        },
+        {
+          model: User,
+          foreignKey: "lawyer_id",
+          as: "lawyer",
+        },
+      ],
+      where: {
+        case_id: {
+          [Op.in]: caseIds,
+        },
+      },
+      order: [
+        ["createdAt", "DESC"],
+        ["case", "title", "ASC"],
+      ],
+    });
 
-// //       if (isExisting) {
-// //         const conflictMessage =
-// //           isExisting.name.toLowerCase() === name.toLowerCase()
-// //             ? RESPONSE_MESSAGES.NAME_ALREADY_EXIST
-// //             : RESPONSE_MESSAGES.EMAIL_ALREADY_EXIST;
+    const clientProfile = client.toJSON();
+    clientProfile.cases = Cases;
+    clientProfile.bids = Bids;
 
-// //         return responseHelper.fail(res, conflictMessage, 409);
-// //       }
-// //     }
+    return responseHelper.success(
+      res,
+      clientProfile,
+      "Client fetched successfully",
+      200
+    );
+  } catch (error) {
+    console.error("Error fetching client:", error);
+    return responseHelper.fail(res, error.message, 500);
+  }
+};
 
-// //     if (user_type === USER_TYPES.STUDENT) {
-// //       const isExisting = await User.findOne({
-// //         include: [
-// //           {
-// //             model: User,
-// //             as: "university_student",
-// //             where: { id: req.user.id },
-// //           },
-// //         ],
-// //         where: {
-// //           [Op.or]: [
-// //             { name, id: { [Op.ne]: id } },
-// //             {
-// //               [Op.and]: [
-// //                 { email },
-// //                 { email: { [Op.ne]: null } },
-// //                 { email: { [Op.ne]: "" } },
-// //                 { id: { [Op.ne]: id } },
-// //               ],
-// //             },
-// //           ],
-// //         },
-// //       });
+const updateClientProfile = async (req, res) => {
+  try {
+    const { id } = req.user;
 
-// //       if (isExisting) {
-// //         const conflictMessage =
-// //           isExisting.name.toLowerCase() === name.toLowerCase()
-// //             ? RESPONSE_MESSAGES.NAME_ALREADY_EXIST
-// //             : RESPONSE_MESSAGES.EMAIL_ALREADY_EXIST;
+    const lawyerProfile = await User.update({ ...req.body }, { where: { id } });
 
-// //         return responseHelper.fail(res, conflictMessage, 409);
-// //       }
-// //     }
+    return responseHelper.success(
+      res,
+      lawyerProfile,
+      "Lawyer profile updated successfully",
+      200
+    );
+  } catch (error) {
+    console.error("Error fetching client:", error);
+    return responseHelper.fail(res, error.message, 500);
+  }
+};
 
-// //     if (user_type === USER_TYPES.FOCAL_PERSON) {
-// //       const isExisting = await User.findOne({
-// //         include: [
-// //           {
-// //             model: User,
-// //             as: "university_focal_person",
-// //           },
-// //         ],
-// //         where: {
-// //           [Op.or]: [
-// //             { name, id: { [Op.ne]: id } },
-// //             {
-// //               [Op.and]: [
-// //                 { email },
-// //                 { email: { [Op.ne]: null } },
-// //                 { email: { [Op.ne]: "" } },
-// //                 { id: { [Op.ne]: id } },
-// //               ],
-// //             },
-// //           ],
-// //           university_focal_person_id: req.body.university_id,
-// //         },
-// //       });
-
-// //       if (isExisting) {
-// //         const conflictMessage =
-// //           isExisting.name.toLowerCase() === name.toLowerCase()
-// //             ? RESPONSE_MESSAGES.NAME_ALREADY_EXIST
-// //             : RESPONSE_MESSAGES.EMAIL_ALREADY_EXIST;
-
-// //         return responseHelper.fail(res, conflictMessage, 409);
-// //       }
-
-// //       if (user.email !== email) {
-// //         const randomPassword = Array(5)
-// //           .fill(0)
-// //           .map(
-// //             () =>
-// //               "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*"[
-// //                 Math.floor(Math.random() * 70)
-// //               ]
-// //           )
-// //           .join("");
-// //         user.password = await getHashValue(randomPassword);
-// //         user.save();
-
-// //         const baseURL = req.get("origin");
-// //         const applicationLink = baseURL + "/login"; // Application login link
-// //         const logoURL = baseURL + ASSETS.K2X_LOGO;
-
-// //         let message = {
-// //           messageSubject: `Focal Person Account Created Successfully`,
-// //           messageBody: emailContent(
-// //             logoURL,
-// //             ` <div class="content">
-// //                   <h3>Dear ${user.name},</h3>
-// //                   <p>We are pleased to inform you that your account has been successfully created by the admin. You can now log in to your account using the credentials provided below:</p>
-// //                   <span><strong>Email:</strong> ${user.email}</span><br>
-// //                   <span><strong>Password:</strong> ${randomPassword}</span><br>
-// //                   <span><strong>Application Link:</strong> <a href="${applicationLink}">${applicationLink}</a></span><br>
-// //                   <p>We recommend changing your password after logging in for the first time to ensure the security of your account.</p>
-// //                                  ${
-// //                                    contactInfo
-// //                                      ? `<p>For any queries or concerns, please feel free to contact us at ${contactInfo}</p>`
-// //                                      : ""
-// //                                  }
-// //                   <p class="ys">Yours sincerely,</p>
-// //                   <p class="ys">KTR Support Team</p>
-// //                   <br>
-// //               </div>`
-// //           ),
-// //         };
-
-// //         await sendMail(user.email, message);
-// //       }
-// //     }
-
-// //     if (user_type === USER_TYPES.UNIVERSITY) {
-// //       const isExisting = await User.findOne({
-// //         where: {
-// //           name,
-// //           id: { [Op.ne]: id },
-// //           user_type: USER_TYPES.UNIVERSITY,
-// //         },
-// //       });
-
-// //       if (isExisting) {
-// //         const conflictMessage = RESPONSE_MESSAGES.NAME_ALREADY_EXIST;
-// //         return responseHelper.fail(res, conflictMessage, 409);
-// //       }
-// //     }
-
-// //     await user.update(req.body, { where: { id } });
-
-// //     if (USER_TYPES.UNIVERSITY) {
-// //       await OtherDetail.update(req.body, { where: { user_id: id } });
-// //     }
-
-// //     return responseHelper.success(
-// //       res,
-// //       user,
-// //       RESPONSE_MESSAGES.UPDATED_SUCCESSFULLY,
-// //       200
-// //     );
-// //   } catch (err) {
-// //     return responseHelper.fail(res, err.message, 500);
-// //   }
-// // };
-
-
-// // Delete User
-// // const deleteUser = async (req, res) => {
-// //   try {
-// //     const user = await User.findByPk(req.params.id);
-// //     if (!user) {
-// //       return responseHelper.fail(res, RESPONSE_MESSAGES.USER_NOT_FOUND, 404);
-// //     }
-
-// //     await user.destroy();
-// //     return responseHelper.success(
-// //       res,
-// //       null,
-// //       RESPONSE_MESSAGES.DELETED_SUCCESSFULLY,
-// //       200
-// //     );
-// //   } catch (err) {
-// //     return responseHelper.fail(res, err.message, 500);
-// //   }
-// // };
-
-// module.exports = {
-//   createCompany,
-// };
+module.exports = {
+  getLawyers,
+  lawyerProfile,
+  updateLawyerProfile,
+  clientProfile,
+  updateClientProfile,
+};

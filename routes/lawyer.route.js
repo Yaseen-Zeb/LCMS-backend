@@ -1,22 +1,12 @@
 const express = require("express");
 const { authenticate } = require("../middlewares/auth");
 const router = express.Router();
-const lawyerController = require("../controllers").lawyer;
+const userController = require("../controllers").user;
 
+router.get("/list", userController.getLawyers);
 
-router.get(
-  "/list",
-  lawyerController.getLawyers
-);
+router.get("/profile/:id", userController.lawyerProfile);
 
-router.get(
-  "/profile/:id",
-  lawyerController.getLawyerById
-);
-
-router.get("/profile", authenticate, lawyerController.lawyerProfile);
-
-router.put("/profile/update", authenticate, lawyerController.updateLawyerProfile);
-
+router.put("/profile/update", authenticate, userController.updateLawyerProfile);
 
 module.exports = router;

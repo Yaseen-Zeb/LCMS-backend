@@ -5,6 +5,7 @@ const {
 } = require("../helpers/hash.helper");
 const responseHelper = require("../helpers/response.helper");
 const { User } = require("../models");
+const { registerSchema } = require("../validationSchemas/auth");
 
 const login = async (req, res) => {
   try {
@@ -27,6 +28,7 @@ const login = async (req, res) => {
       email: user.email,
       name: user.name,
       role: user.role,
+      profile_picture: user.profile_picture,
     });
 
     return responseHelper.success(res, { token }, "Login successfully", 200);
@@ -37,39 +39,61 @@ const login = async (req, res) => {
 
 const signup = async (req, res) => {
   try {
-    const {
-      name,
-      email,
-      phone_number,
-      password,
-      address,
-      role,
-      specialization,
-      experience,
-    } = req.body;
+    const userData = {
+      name: req.body.name,
+      email: req.body.email,
+      phone_number: req.body.phone_number,
+      password: req.body.password,
+      address: req.body.address,
+      role: req.body.role,
+      specialization: req.body.specialization
+        ? JSON.parse(req.body.specialization)
+        : [],
+      experience: req.body.experience ? Number(req.body.experience) : undefined,
+      profile_picture: req.files && req.files.profile_picture ? req.files.profile_picture[0].path : undefined,
+      certificate: req.files && req.files.certificate ? req.files.certificate[0].path : undefined,
+      
+    };
+
+    const { error } = registerSchema.validate(userData, { abortEarly: false });
+
+    if (error) {
+      const errorMessages = error.details.map((detail) =>
+        detail.message.replace(/"/g, "")
+      );
+      return responseHelper.fail(res, errorMessages, 400);
+    }
 
     const existingUser = await User.findOne({
-      where: { email: email.toLowerCase() },
+      where: { email: userData.email.toLowerCase() },
     });
 
     if (existingUser) {
       return responseHelper.fail(res, "Email already exists", 409);
     }
 
-    const hashedPassword = await getHashValue(password);
+    const hashedPassword = await getHashValue(userData.password);
 
     const newUser = await User.create({
-      name,
-      email: email.toLowerCase(),
-      phone_number,
+      name: userData.name,
+      email: userData.email.toLowerCase(),
+      phone_number: userData.phone_number,
       password: hashedPassword,
-      address,
-      role,
-      specialization: specialization || null,
-      experience: experience || null,
+      address: userData.address,
+      role: userData.role,
+      specialization: userData.specialization || null,
+      experience: userData.experience || null,
+      profile_picture: userData.profile_picture || null,
+      certificate: userData.certificate || null,
     });
 
-    const token = await signAccessToken({ id: newUser.id, name, email, role });
+    const token = await signAccessToken({
+      id: newUser.id,
+      name: userData.name,
+      email: userData.email,
+      role: userData.role,
+      profile_picture: userData.profile_picture,
+    });
 
     return responseHelper.success(
       res,

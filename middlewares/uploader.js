@@ -1,52 +1,44 @@
 const multer = require("multer");
-const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const path = require("path");
 require("dotenv").config();
 
-// AWS SDK v3 S3 Client Configuration
-const s3 = new S3Client({
-  region: process.env.AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+// Configure Multer for Local File Storage
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "public/uploads/");
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
   },
 });
 
-// Multer Configuration to Store Files in Memory
-const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-const UploadFile = ({ fieldName }) => {
-  return async (req, res, next) => {
-    upload.single(fieldName)(req, res, async (err) => {
+const UploadFile = () => {
+  return (req, res, next) => {
+    upload.fields([
+      { name: "profile_picture", maxCount: 1 },
+      { name: "certificate", maxCount: 1 },
+    ])(req, res, (err) => {
       if (err) {
         return res.status(400).json({ error: err.message });
       }
 
-      // If no file is uploaded, proceed without S3 upload
-      if (!req.file) {
-        return next();
-      }
-
       try {
-        // Define S3 Upload Parameters (Skip if file is not uploaded)
-        const fileKey = `uploads/${Date.now()}_${req.file.originalname}`;
-        const uploadParams = {
-          Bucket: process.env.AWS_BUCKET_NAME,
-          Key: fileKey,
-          Body: req.file.buffer,
-          ContentType: req.file.mimetype,
-        };
+        // Ensure profile picture is required
+        if (!req.files || !req.files.profile_picture) {
+          return res.status(400).json({ error: "Profile picture is required" });
+        }
 
-        // Upload File to S3
-        await s3.send(new PutObjectCommand(uploadParams));
-
-        // Store File URL in Request Object
-        req.file.location = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileKey}`;
+        // Store file paths in request body
+        req.body.profile_picture = req.files.profile_picture[0].filename;
+        req.body.certificate = req.files.certificate ? req.files.certificate[0].filename : null; // Optional
 
         next();
-      } catch (uploadError) {
-        console.error("S3 Upload Error:", uploadError);
-        return res.status(500).json({ error: "Failed to upload file to S3" });
+      } catch (error) {
+        console.error("File Upload Error:", error);
+        return res.status(500).json({ error: "Failed to upload file locally" });
       }
     });
   };

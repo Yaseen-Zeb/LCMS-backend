@@ -1,6 +1,5 @@
 const { DataTypes } = require("sequelize");
 const { sequelize } = require("../config/db");
-const { ROLES } = require("../config/constant");
 
 const User = sequelize.define(
   "users",
@@ -14,11 +13,14 @@ const User = sequelize.define(
       allowNull: false,
     },
     phone_number: { type: DataTypes.STRING, allowNull: false },
+
     address: { type: DataTypes.TEXT, allowNull: true },
     specialization: {
       type: DataTypes.JSON,
     },
     experience: { type: DataTypes.INTEGER },
+    profile_picture: { type: DataTypes.STRING, allowNull: false },
+    certificate: { type: DataTypes.STRING, allowNull: true },
   },
   { timestamps: true }
 );
