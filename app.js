@@ -11,6 +11,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 const path = require('path');
+const { createAdminUser } = require('./controllers/user.controller');
 
 
 app.use("/api", Router);
@@ -33,6 +34,7 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   try {
     await databaseLoader();
+    createAdminUser();
     app.listen(PORT, () => {
       console.log(`Server is running at http://localhost:${PORT}`);
     });

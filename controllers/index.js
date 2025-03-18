@@ -3,4 +3,5 @@ module.exports = {
   case: require("./case.controller"),
   user: require("./user.controller"),
   bidding: require("./bidding.controller"),
+  feedback: require("./feedback.controller"),
 };

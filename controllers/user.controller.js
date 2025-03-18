@@ -1,7 +1,55 @@
 const { Op } = require("sequelize");
-const { ROLES } = require("../config/constant");
+const { ROLES, CASE_STATUS } = require("../config/constant");
 const responseHelper = require("../helpers/response.helper");
 const { User, Bidding, Case } = require("../models");
+const { getHashValue } = require("../helpers/hash.helper");
+
+const getDashboardData = async (req, res) => {
+  try {
+    const verifiedLawyers = await User.count({
+      where: { role: ROLES.LAWYER, status: true },
+    });
+
+    const unVerifiedLawyers = await User.count({
+      where: { role: ROLES.LAWYER, status: false },
+    });
+
+    const totalClients = await User.count({
+      where: { role: ROLES.CLIENT },
+    });
+
+    // Fixed Case Queries: Removed incorrect `role: ROLES.LAWYER`
+    const openCases = await Case.count({
+      where: { status: CASE_STATUS.OPEN },
+    });
+
+    const ongoingCases = await Case.count({
+      where: { status: CASE_STATUS.PENDING },
+    });
+
+    const closedCases = await Case.count({
+      where: { status: CASE_STATUS.CLOSED },
+    });
+
+    // Return a properly formatted response
+    return responseHelper.success(
+      res,
+      {
+        verifiedLawyers,
+        unVerifiedLawyers,
+        totalClients,
+        openCases,
+        ongoingCases,
+        closedCases,
+      },
+      "Dashboard fetched successfully",
+      200
+    );
+  } catch (error) {
+    console.error("Error fetching dashboard data:", error);
+    return responseHelper.fail(res, error.message, 500);
+  }
+};
 
 const getLawyers = async (req, res) => {
   try {
@@ -22,17 +70,57 @@ const getLawyers = async (req, res) => {
   }
 };
 
+const getClients = async (req, res) => {
+  try {
+    const clients = await User.findAll({
+      where: { role: ROLES.CLIENT },
+      order: [["createdAt", "DESC"]],
+    });
+
+    return responseHelper.success(
+      res,
+      clients,
+      "Lawyer fetched successfully",
+      200
+    );
+  } catch (error) {
+    console.error("Error fetching lawyers:", error);
+    return responseHelper.fail(res, error.message, 500);
+  }
+};
+
+const getActiveLawyers = async (req, res) => {
+  try {
+    const lawyers = await User.findAll({
+      where: { role: ROLES.LAWYER,status:true },
+      order: [["createdAt", "DESC"]],
+    });
+
+    return responseHelper.success(
+      res,
+      lawyers,
+      "Lawyer fetched successfully",
+      200
+    );
+  } catch (error) {
+    console.error("Error fetching lawyers:", error);
+    return responseHelper.fail(res, error.message, 500);
+  }
+};
+
+
 const lawyerProfile = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const lawyerProfile = await Bidding.findAll({
+    const lawyer = await User.findOne({ where: { id, role: ROLES.LAWYER } });
+
+    if (!lawyer) {
+      return responseHelper.fail(res, "Lawyer not found", 404);
+    }
+
+    const Bids = await Bidding.findAll({
       include: [
-        {
-          model: User,
-          foreignKey: "lawyer_id",
-          as: "lawyer",
-        },
         {
           model: Case,
           foreignKey: "case_id",
@@ -40,12 +128,37 @@ const lawyerProfile = async (req, res) => {
         },
       ],
       where: { lawyer_id: id },
+      order: [["createdAt", "DESC"]],
     });
 
-    if (!lawyerProfile) {
-      return responseHelper.fail(res, "Lawyer not found", 404);
-    }
+    const caseIds = Bids.map((bidItem) => bidItem.case_id);
 
+    const pendingCases = await Case.findAll({
+      where: {
+        id: {
+          [Op.in]: caseIds,
+        },
+        status: CASE_STATUS.PENDING,
+      },
+    });
+
+    const completedCases = await Case.findAll({
+      where: {
+        id: {
+          [Op.in]: caseIds,
+        },
+        status: CASE_STATUS.CLOSED,
+      },
+    });
+
+    const lawyerProfile = {};
+    lawyerProfile.lawyerInfo = lawyer;
+    lawyerProfile.cases = {
+      pendingCases,
+      completedCases,
+    };
+
+    lawyerProfile.bids = Bids;
     return responseHelper.success(
       res,
       lawyerProfile,
@@ -53,7 +166,7 @@ const lawyerProfile = async (req, res) => {
       200
     );
   } catch (error) {
-    console.error("Error fetching client:", error);
+    console.error("Error fetching lawyer profile:", error);
     return responseHelper.fail(res, error.message, 500);
   }
 };
@@ -75,27 +188,6 @@ const updateLawyerProfile = async (req, res) => {
     return responseHelper.fail(res, error.message, 500);
   }
 };
-
-// Client functions
-
-// const getClients = async (req, res) => {
-//   try {
-//     const clients = await User.findAll({
-//       where: { role: ROLES.LAWYER },
-//       order: [["createdAt", "DESC"]],
-//     });
-
-//     return responseHelper.success(
-//       res,
-//       clients,
-//       "Lawyer fetched successfully",
-//       200
-//     );
-//   } catch (error) {
-//     console.error("Error fetching clients:", error);
-//     return responseHelper.fail(res, error.message, 500);
-//   }
-// };
 
 const clientProfile = async (req, res) => {
   try {
@@ -138,7 +230,8 @@ const clientProfile = async (req, res) => {
       ],
     });
 
-    const clientProfile = client.toJSON();
+    const clientProfile = {};
+    clientProfile.clientInfo = client;
     clientProfile.cases = Cases;
     clientProfile.bids = Bids;
 
@@ -172,10 +265,105 @@ const updateClientProfile = async (req, res) => {
   }
 };
 
+const updateProfileImage = async (req, res) => {
+  try {
+    const { id } = req.user;
+
+    const userData = {
+      profile_picture:
+        req.files && req.files.profile_picture
+          ? req.files.profile_picture[0].path
+          : undefined,
+    };
+
+    if (!userData.profile_picture) {
+      return responseHelper.fail(res, "Image not found!", 400);
+    }
+
+    await User.update(
+      {
+        profile_picture: userData.profile_picture,
+      },
+      {
+        where: { id },
+      }
+    );
+
+    return responseHelper.success(
+      res,
+      {},
+      "Profile Image updated successfully",
+      201
+    );
+  } catch (error) {
+    return responseHelper.fail(res, error.message, 500);
+  }
+};
+
+const changeStatus = async (req, res) => {
+  try {
+    const { userId, status } = req.body;
+
+    if (!userId || status === undefined) {
+      return responseHelper.fail(res, "User ID and status are required", 400);
+    }
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return responseHelper.fail(res, "User not found", 404);
+    }
+
+    await user.update({ status });
+
+    return responseHelper.success(
+      res,
+      user,
+      "Status updated successfully",
+      200
+    );
+  } catch (error) {
+    return responseHelper.fail(res, error.message, 500);
+  }
+};
+
+const createAdminUser = async () => {
+  try {
+    const adminExists = await User.findOne({
+      where: { email: process.env.ADMIN_EMAIL },
+    });
+
+    if (!adminExists) {
+      const hashedPassword = await getHashValue(process.env.ADMIN_PASSWORD);
+
+      await User.create({
+        name: "Admin",
+        email: process.env.ADMIN_EMAIL,
+        password: hashedPassword,
+        role: "admin",
+        phone_number: "0000000000",
+        address: "Admin Address",
+        specialization: JSON.stringify(["Admin Management"]),
+        experience: 10,
+        profile_picture: "",
+        certificate: null,
+      });
+    }
+  } catch (error) {
+    console.error("Error creating admin user:", error);
+  }
+};
+
 module.exports = {
   getLawyers,
+  
   lawyerProfile,
   updateLawyerProfile,
   clientProfile,
   updateClientProfile,
+  updateProfileImage,
+  createAdminUser,
+  getDashboardData,
+  changeStatus,
+  getClients,
+  getActiveLawyers,
 };

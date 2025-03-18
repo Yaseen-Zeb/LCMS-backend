@@ -15,8 +15,16 @@ const BUDGET_TYPES = {
   HOURLY: "Hourly",
 };
 
+const CASE_STATUS = {
+  OPEN: "open",
+  PENDING: "pending",
+  CLOSED:"closes"
+
+};
+
 module.exports = {
   ROLES,
   URGENCY_LEVELS,
-  BUDGET_TYPES
+  BUDGET_TYPES,
+  CASE_STATUS
 };

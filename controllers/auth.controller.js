@@ -9,9 +9,15 @@ const { registerSchema } = require("../validationSchemas/auth");
 
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, role } = req.body;
 
-    const user = await User.findOne({ where: { email: email.toLowerCase() } });
+    let condition = { email: email.toLowerCase() };
+
+    if (role) {
+      condition.role = role;
+    }
+
+    const user = await User.findOne({ where: condition });
 
     if (!user) {
       return responseHelper.fail(res, "Invalid email or password", 401);
@@ -50,9 +56,14 @@ const signup = async (req, res) => {
         ? JSON.parse(req.body.specialization)
         : [],
       experience: req.body.experience ? Number(req.body.experience) : undefined,
-      profile_picture: req.files && req.files.profile_picture ? req.files.profile_picture[0].path : undefined,
-      certificate: req.files && req.files.certificate ? req.files.certificate[0].path : undefined,
-      
+      profile_picture:
+        req.files && req.files.profile_picture
+          ? req.files.profile_picture[0].path
+          : undefined,
+      certificate:
+        req.files && req.files.certificate
+          ? req.files.certificate[0].path
+          : undefined,
     };
 
     const { error } = registerSchema.validate(userData, { abortEarly: false });

@@ -33,6 +33,7 @@ const addCase = async (req, res) => {
   }
 };
 
+
 const updateCase = async (req, res) => {
   try {
     const { body } = req;

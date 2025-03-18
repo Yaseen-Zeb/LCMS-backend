@@ -21,6 +21,7 @@ const User = sequelize.define(
     experience: { type: DataTypes.INTEGER },
     profile_picture: { type: DataTypes.STRING, allowNull: false },
     certificate: { type: DataTypes.STRING, allowNull: true },
+    status: { type: DataTypes.BOOLEAN, defaultValue: true },
   },
   { timestamps: true }
 );
