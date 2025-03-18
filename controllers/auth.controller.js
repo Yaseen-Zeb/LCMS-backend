@@ -96,6 +96,7 @@ const signup = async (req, res) => {
       experience: userData.experience || null,
       profile_picture: userData.profile_picture || null,
       certificate: userData.certificate || null,
+      status: userData.role === "lawyer" ? false : true,
     });
 
     const token = await signAccessToken({
