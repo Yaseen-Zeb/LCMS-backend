@@ -15,16 +15,17 @@ const Case = sequelize.define("cases", {
     allowNull: false,
   },
   urgency: {
-    type: DataTypes.STRING,
-    defaultValue: "Standard",
+    type: DataTypes.ENUM("standard", "priority", "urgent"),
+    defaultValue: "standard",
   },
   budget_type: {
-    type: DataTypes.STRING,
+    type: DataTypes.ENUM("fixed", "hourly"),
     allowNull: true,
+    defaultValue: "fixed",
   },
   status: {
-    type: DataTypes.STRING,
-    defaultValue: "Open",
+    type: DataTypes.ENUM("open", "ongoing", "closed"),
+    defaultValue: "open",
   },
   budget_amount: { type: DataTypes.FLOAT, allowNull: true },
   location: { type: DataTypes.STRING, allowNull: false },

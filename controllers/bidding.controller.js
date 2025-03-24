@@ -1,5 +1,7 @@
+const { Op } = require("sequelize");
 const responseHelper = require("../helpers/response.helper");
-const { Bidding, Case } = require("../models");
+const { Bidding, Case, User, Chat } = require("../models");
+const { Bid_STATUS, CASE_STATUS } = require("../config/constant");
 
 const addBid = async (req, res) => {
   try {
@@ -16,7 +18,9 @@ const addBid = async (req, res) => {
     }
 
     // Ensure total_bids is an array (Handle potential null cases)
-    let IsBidExist = await Bidding.findOne({where:{case_id:caseId,lawyer_id:userId}});
+    let IsBidExist = await Bidding.findOne({
+      where: { case_id: caseId, lawyer_id: userId },
+    });
 
     // Check if the user has already bid
     if (IsBidExist) {
@@ -47,36 +51,56 @@ const addBid = async (req, res) => {
   }
 };
 
-const myBids = async (req, res) => {
+const updateBidStatus = async (req, res) => {
   try {
-    const { id } = req.user;
-    const myBids = await Bidding.findAll({
-      include: [
-        {
-          model: Case,
-          foreignKey: "case_id",
-          as: "case",
-        },
-        {
-          model: User,
-          foreignKey: "lawyer_id",
-          as: "case",
-        },
-      ],
-      where: { lawyer_id: id },
-      order: [["createdAt", "DESC"]],
-    });
+    const { bidId } = req.params;
+
+    await Bidding.update(
+      { bid_status: Bid_STATUS.SEEN },
+      { where: { id: bidId, bid_status: { [Op.ne]: Bid_STATUS.ACCEPTED } } }
+    );
 
     return responseHelper.success(
       res,
-      myBids,
-      "Bids fetched successfully",
+      [],
+      "Bid status updated successfully",
       200
     );
   } catch (error) {
-    console.error("Error fetching Bids:", error);
+    console.error("Error :", error);
     return responseHelper.fail(res, error.message, 500);
   }
 };
 
-module.exports = { addBid, myBids };
+const acceptBid = async (req, res) => {
+  try {
+    const { senderId, receiverId, message, caseId, bidId } = req.body;
+
+    await Bidding.update(
+      { bid_status: Bid_STATUS.DEACTIVATED },
+      { where: { case_id: caseId } }
+    );
+    await Bidding.update(
+      { bid_status: Bid_STATUS.ACCEPTED },
+      { where: { id: bidId} }
+    );
+    await Case.update(
+      { status: CASE_STATUS.ONGOING },
+      { where: { id: caseId} }
+    );    
+
+    await Chat.create({ senderId, receiverId, message });
+
+    return responseHelper.success(
+      res,
+      [],
+      "Bid accepted successfully",
+      200
+    );
+  } catch (error) {
+    console.error("Error :", error);
+    return responseHelper.fail(res, error.message, 500);
+  }
+};
+
+module.exports = { addBid, updateBidStatus, acceptBid };

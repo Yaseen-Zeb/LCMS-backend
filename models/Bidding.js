@@ -6,7 +6,10 @@ const Bidding = sequelize.define("bidding", {
   lawyer_id: { type: DataTypes.INTEGER, allowNull: false },
   case_id: { type: DataTypes.INTEGER, allowNull: false },
   description: { type: DataTypes.TEXT, allowNull: false },
-  bid_status: { type: DataTypes.STRING, defaultValue: "pending" },
+  bid_status: {
+    type: DataTypes.ENUM("not_seen", "seen", "accepted","deactivated"),
+    defaultValue: "not_seen",
+  }
 });
 
 

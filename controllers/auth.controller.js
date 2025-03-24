@@ -52,28 +52,33 @@ const signup = async (req, res) => {
       password: req.body.password,
       address: req.body.address,
       role: req.body.role,
+      cnic: req.body.cnic,
+      gender: req.body.gender,
+      city: req.body.city,
+      bio: req.body.bio,
+      languages_spoken: req.body.languages_spoken,
+      website_or_social: req.body.website_or_social,
+      profession : req.body.profession ,
+
       specialization: req.body.specialization
         ? JSON.parse(req.body.specialization)
         : [],
-      experience: req.body.experience ? Number(req.body.experience) : undefined,
+
+      experience: req.body.experience
+        ? Number(req.body.experience)
+        : undefined,
+
       profile_picture:
         req.files && req.files.profile_picture
           ? req.files.profile_picture[0].path
           : undefined,
+
       certificate:
         req.files && req.files.certificate
           ? req.files.certificate[0].path
           : undefined,
     };
 
-    const { error } = registerSchema.validate(userData, { abortEarly: false });
-
-    if (error) {
-      const errorMessages = error.details.map((detail) =>
-        detail.message.replace(/"/g, "")
-      );
-      return responseHelper.fail(res, errorMessages, 400);
-    }
 
     const existingUser = await User.findOne({
       where: { email: userData.email.toLowerCase() },
@@ -92,19 +97,29 @@ const signup = async (req, res) => {
       password: hashedPassword,
       address: userData.address,
       role: userData.role,
+
+      cnic: userData.cnic,
+      gender: userData.gender,
+      city: userData.city,
+      bio: userData.bio,
+      languages_spoken: userData.languages_spoken,
+      website_or_social: userData.website_or_social,
+      profession : userData.profession ,
+
       specialization: userData.specialization || null,
       experience: userData.experience || null,
       profile_picture: userData.profile_picture || null,
       certificate: userData.certificate || null,
-      status: userData.role === "lawyer" ? false : true,
+
+      status: userData.role === "lawyer" ? false : true, 
     });
 
     const token = await signAccessToken({
       id: newUser.id,
-      name: userData.name,
-      email: userData.email,
-      role: userData.role,
-      profile_picture: userData.profile_picture,
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role,
+      profile_picture: newUser.profile_picture,
     });
 
     return responseHelper.success(
@@ -117,6 +132,7 @@ const signup = async (req, res) => {
     return responseHelper.fail(res, error.message, 500);
   }
 };
+
 
 const changePassword = async (req, res) => {
   try {

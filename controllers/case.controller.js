@@ -1,6 +1,7 @@
 const { Op } = require("sequelize");
 const responseHelper = require("../helpers/response.helper");
 const { Case, User } = require("../models");
+const { CASE_STATUS } = require("../config/constant");
 
 const addCase = async (req, res) => {
   try {
@@ -78,12 +79,14 @@ const updateCase = async (req, res) => {
   }
 };
 
-module.exports = updateCase;
 
 const getCases = async (req, res) => {
   try {
-    const cases = await Case.findAll({ order: [["createdAt", "DESC"]] });
-
+   const cases = await Case.findAll(
+      { where: { status: { [Op.ne]: CASE_STATUS.CLOSED } } },
+      { order: [["createdAt", "DESC"]] }
+    );
+    
     return responseHelper.success(res, cases, "Case fetched successfully", 200);
   } catch (error) {
     console.error("Error fetching cases:", error);

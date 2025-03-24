@@ -4,4 +4,6 @@ module.exports = {
   user: require("./user.controller"),
   bidding: require("./bidding.controller"),
   feedback: require("./feedback.controller"),
+  review: require("./review.controller"),
+  chat: require("./chat.controller"),
 };

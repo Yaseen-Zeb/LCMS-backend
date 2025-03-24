@@ -4,6 +4,8 @@ const { UploadFile } = require("../middlewares/uploader");
 const router = express.Router();
 const userController = require("../controllers").user;
 
+router.post("/ping", authenticate, userController.ping);
+
 router.get("/get-dashboard-data", userController.getDashboardData);
 
 router.get("/lawyer/list", userController.getActiveLawyers);

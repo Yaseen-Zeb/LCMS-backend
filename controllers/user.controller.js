@@ -4,6 +4,22 @@ const responseHelper = require("../helpers/response.helper");
 const { User, Bidding, Case } = require("../models");
 const { getHashValue } = require("../helpers/hash.helper");
 
+
+const ping = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    await User.update(
+      { is_online: true, last_seen: new Date() },
+      { where: { id: userId } }
+    );
+
+    return responseHelper.success(res, {}, "Ping received", 200);
+  } catch (error) {
+    return responseHelper.fail(res, error.message, 500);
+  }
+};
+
 const getDashboardData = async (req, res) => {
   try {
     const verifiedLawyers = await User.count({
@@ -24,7 +40,7 @@ const getDashboardData = async (req, res) => {
     });
 
     const ongoingCases = await Case.count({
-      where: { status: CASE_STATUS.PENDING },
+      where: { status: CASE_STATUS.ONGOING },
     });
 
     const closedCases = await Case.count({
@@ -92,7 +108,7 @@ const getClients = async (req, res) => {
 const getActiveLawyers = async (req, res) => {
   try {
     const lawyers = await User.findAll({
-      where: { role: ROLES.LAWYER,status:true },
+      where: { role: ROLES.LAWYER, status: true },
       order: [["createdAt", "DESC"]],
     });
 
@@ -107,7 +123,6 @@ const getActiveLawyers = async (req, res) => {
     return responseHelper.fail(res, error.message, 500);
   }
 };
-
 
 const lawyerProfile = async (req, res) => {
   try {
@@ -138,7 +153,7 @@ const lawyerProfile = async (req, res) => {
         id: {
           [Op.in]: caseIds,
         },
-        status: CASE_STATUS.PENDING,
+        status: CASE_STATUS.ONGOING,
       },
     });
 
@@ -230,10 +245,25 @@ const clientProfile = async (req, res) => {
       ],
     });
 
+    const BidsGroupedByCase = {};
+
+    Bids.forEach((bid) => {
+      const caseId = bid.case.id;
+
+      if (!BidsGroupedByCase[caseId]) {
+        BidsGroupedByCase[caseId] = {
+          ...bid.case.dataValues,
+          bids: [],
+        };
+      }
+      delete bid.case;
+      BidsGroupedByCase[caseId].bids.push(bid);
+    });
+
     const clientProfile = {};
     clientProfile.clientInfo = client;
     clientProfile.cases = Cases;
-    clientProfile.bids = Bids;
+    clientProfile.bids = Object.values(BidsGroupedByCase);
 
     return responseHelper.success(
       res,
@@ -346,6 +376,11 @@ const createAdminUser = async () => {
         experience: 10,
         profile_picture: "",
         certificate: null,
+        cnic: "0000000000000",
+        gender: "Other",
+        languages_spoken: "English",
+        city: "System",
+        profession: "System Admin"
       });
     }
   } catch (error) {
@@ -353,9 +388,10 @@ const createAdminUser = async () => {
   }
 };
 
+
 module.exports = {
+  ping,
   getLawyers,
-  
   lawyerProfile,
   updateLawyerProfile,
   clientProfile,
